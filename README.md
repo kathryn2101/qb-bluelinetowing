@@ -12,7 +12,7 @@ All I ask is if you use to provide credit where it is due.
 
 Add to qb-core/shared.lua/QBShared.Jobs
 
-// ['bltowing'] = {
+['bltowing'] = {
         label = 'Blue Line Towing',
         defaultDuty = true,
         grades = {
@@ -43,7 +43,7 @@ Add to qb-core/shared.lua/QBShared.Jobs
                 payment = 1200
             },
         },
-    }, //
+    },
     
     
     we got our tow vehicles from Bagged Customs, cfx forums and our script came from theebu
