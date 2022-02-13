@@ -11,6 +11,7 @@ All I ask is if you use to provide credit where it is due.
 
 
 Add to qb-core/shared.lua/QBShared.Jobs
+or if your using the latest QBCore qb-core/shared/jobs.lua
 
 	['bltowing'] = {
         	label = 'Blue Line Towing',
