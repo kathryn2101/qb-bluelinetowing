@@ -1,49 +1,53 @@
 local QBCore = exports['qb-core']:GetCoreObject()
+local PaymentTax = 10
 
+RegisterNetEvent('bltowing:server:crypto', function()
+    local xPlayer = QBCore.Functions.GetPlayer(tonumber(source))
+	xPlayer.Functions.AddItem("cryptostick", 1, false)
+	TriggerClientEvent('inventory:client:ItemBox', source, QBCore.Shared.Items["cryptostick"], "add")
+end)
 
-local function GetCurrentTows()
-    local amount = 0
-    local players = QBCore.Functions.GetQBPlayers()
-    for k, v in pairs(players) do
-        if v.PlayerData.job.name == "bltowing" and v.PlayerData.job.onduty then
-            amount = amount + 1
-        end
-    end
-    return amount
-end
-
-QBCore.Commands.Add("callsign", "Give Yourself A Callsign", {{name = "name", help = "Name of your callsign"}}, false, function(source, args)
+RegisterNetEvent('bltowing:server:payslipInfo', function(drops)
     local src = source
     local Player = QBCore.Functions.GetPlayer(src)
-    Player.Functions.SetMetaData("callsign", table.concat(args, " "))
-end)
-
-RegisterNetEvent('bltowing:server:UpdateCurrentTows', function()
-    local amount = 0
-    local players = QBCore.Functions.GetQBPlayers()
-    for k, v in pairs(players) do
-        if v.PlayerData.job.name == "bltowing" and v.PlayerData.job.onduty then
-            amount = amount + 1
-        end
+    local drops = tonumber(drops)
+    local bonus = 0
+    local DropPrice = math.random(150, 170)
+    if drops > 5 then
+        bonus = math.ceil((DropPrice / 10) * 5)
+    elseif drops > 10 then
+        bonus = math.ceil((DropPrice / 10) * 7)
+    elseif drops > 15 then
+        bonus = math.ceil((DropPrice / 10) * 10)
+    elseif drops > 20 then
+        bonus = math.ceil((DropPrice / 10) * 12)
     end
-    TriggerClientEvent("bltowing:SetTowCount", -1, amount)
+    local price = (DropPrice * drops) + bonus
+    local taxAmount = math.ceil((price / 100) * PaymentTax)
+    local payment = price - taxAmount
+
+    Player.Functions.AddJobReputation(1)
+    Player.Functions.AddMoney("bank", payment, "bltowing-salary")
+    TriggerClientEvent('chatMessage', source, "JOB", "warning", "You Received Your Salary From: $"..payment..", Gross: $"..price.." (From What $"..bonus.." Bonus) In $"..taxAmount.." Tax ("..PaymentTax.."%)")
 end)
 
-
-CreateThread(function()
-    while true do
-        Wait(1000 * 60 * 10)
-        local curTows = GetCurrentTows()
-        TriggerClientEvent("bltowing:SetTowCount", -1, curTows)
-    end
-end)
-
-QBCore.Commands.Add("depot", "Impound With Price", {{name = "price", help = "Price for how much the person has to pay (may be empty)"}}, false, function(source, args)
+RegisterNetEvent('qb-tow:server:deliverVehicle', function(plate)
     local src = source
+    local plate = QBCore.Shared.Trim(plate)
     local Player = QBCore.Functions.GetPlayer(src)
-    if Player.PlayerData.job.name == "bltowing" and Player.PlayerData.job.onduty then
-        TriggerClientEvent("bltowing:client:ImpoundVehicle", src, false, tonumber(args[1]))
-    else
-        TriggerClientEvent('QBCore:Notify', src, 'For on-duty tow or mechanic only', 'error')
+        DeleteVehicle(vehicle)
+        RemoveBlip(CurrentBlip2)
+        JobsDone = JobsDone + 1
+        VehicleSpawned = false
+end)
+
+QBCore.Commands.Add("npc", "Toggle Npc Job", {}, false, function(source, args)
+	TriggerClientEvent("jobs:client:ToggleNpc", source)
+end)
+
+QBCore.Commands.Add("putonflatbed", "Place A Car On The Back Of Your Flatbed", {}, false, function(source, args)
+    local Player = QBCore.Functions.GetPlayer(source)
+    if Player.PlayerData.job.name == "bltowing" then
+        TriggerClientEvent("bltowing:client:PutOnFlatbed", source)
     end
 end)
