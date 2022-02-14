@@ -5,10 +5,11 @@ description 'qb-bluelinetowing'
 version '1.0.0'
 
 client_scripts {
-    'client/main.lua',
+    '@qb-garages/config.lua',
+    'client.lua',
     'config.lua'
 } 
 
-server_script 'server/server.lua'
+server_script 'server.lua'
 
 lua54 'yes'
