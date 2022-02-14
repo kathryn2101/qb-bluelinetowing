@@ -84,7 +84,7 @@ CreateThread(function()
                 job = "bltowing" 
             },
         }, 
-        distance = 2.5
+        distance = 1.5
     })
 end)
 
@@ -112,14 +112,14 @@ RegisterNetEvent('QBCore:Client:OnJobUpdate', function(JobInfo)
     PlayerJob = JobInfo
 
     if PlayerJob.name == "bltowing" then
-        local TowVehBlip = AddBlipForCoord(Config.Locations["ped"].coords.x, Config.Locations["ped"].coords.y, Config.Locations["ped"].coords.z)
+        local TowVehBlip = AddBlipForCoord(Config.Locations["vehicle"].coords.x, Config.Locations["vehicle"].coords.y, Config.Locations["vehicle"].coords.z)
         SetBlipSprite(TowVehBlip, 326)
         SetBlipDisplay(TowVehBlip, 4)
         SetBlipScale(TowVehBlip, 0.6)
         SetBlipAsShortRange(TowVehBlip, true)
         SetBlipColour(TowVehBlip, 15)
         BeginTextCommandSetBlipName("STRING")
-        AddTextComponentSubstringPlayerName(Config.Locations["ped"].label)
+        AddTextComponentSubstringPlayerName(Config.Locations["vehicle"].label)
         EndTextCommandSetBlipName(TowVehBlip)
 
         RunWorkThread()
@@ -138,8 +138,10 @@ end
 local function deliverVehicle(vehicle)
     DeleteVehicle(vehicle)
     RemoveBlip(CurrentBlip2)
-    JobsDone = JobsDone + 1
+    --QBCore.Functions.Notify("You Have Delivered A Vehicle")
+    JobsComplete = JobsComplete + 1
     VehicleSpawned = false
+    NpcOn = false
     exports['okokNotify']:Alert("Nice!", "You Have Delivered A Vehicle", 5000, 'success')
     exports['okokNotify']:Alert("Time to get going!", "A New Vehicle Can Be Picked Up", 5000, 'info')
 
@@ -322,8 +324,9 @@ RegisterNetEvent('jobs:client:ToggleNpc', function()
             exports['okokNotify']:Alert("Ooops!", "First Finish Your Work", 5000, 'error')
             return
         end
-        NpcOn = not NpcOn
+        NpcOn = true
         if NpcOn then
+            RunWorkThread()
             local randomLocation = getRandomVehicleLocation()
             CurrentDestination.x = Config.Locations["pickup"][randomLocation].coords.x
             CurrentDestination.y = Config.Locations["pickup"][randomLocation].coords.y
@@ -338,13 +341,18 @@ RegisterNetEvent('jobs:client:ToggleNpc', function()
         else
             if DoesBlipExist(CurrentBlip) then
                 RemoveBlip(CurrentBlip)
-                CurrentDestination = {}
+                --CurrentDestination = {}
                 CurrentBlip = nil
             end
             VehicleSpawned = false
         end
     end
 end)
+
+RegisterCommand("bltow", function(source,arg) 
+TriggerEvent("bltowing:client:PutOnFlatbed")
+
+end, false)
 
 RegisterNetEvent('bltowing:client:PutOnFlatbed', function()
     local vehicle = GetVehiclePedIsIn(PlayerPedId(), true)
@@ -384,7 +392,7 @@ RegisterNetEvent('bltowing:client:PutOnFlatbed', function()
                             if NpcOn then
                                 RemoveBlip(CurrentBlip)
                                 exports['okokNotify']:Alert("Time to move out!", "Take The Vehicle To Blue Line Towing Impound Lot", 5000, 'success')
-                                CurrentBlip2 = AddBlipForCoord(1754.15, 3321.76, 41.25)
+                                CurrentBlip2 = AddBlipForCoord(Depots["bltowingimpound"].takeVehicle)
                                 SetBlipColour(CurrentBlip2, 3)
                                 SetBlipRoute(CurrentBlip2, true)
                                 SetBlipRouteColour(CurrentBlip2, 3)
@@ -413,17 +421,29 @@ RegisterNetEvent('bltowing:client:PutOnFlatbed', function()
                 flags = 16,
             }, {}, {}, function() -- Done
                 StopAnimTask(PlayerPedId(), "mini@repair", "fixing_a_ped", 1.0)
-                FreezeEntityPosition(CurrentCar, false)
-                Wait(250)
-                AttachEntityToEntity(CurrentCar, vehicle, 20, -0.0, -15.0, 1.0, 0.0, 0.0, 0.0, false, false, false, false, 20, true)
-                DetachEntity(CurrentCar, true, true)
+                
                 if NpcOn then
                     local targetPos = GetEntityCoords(CurrentCar)
-                    if #(targetPos - vector3(Config.Destinations["vehicle"].coords.x, Config.Destinations["vehicle"].coords.y, Config.Destinations["vehicle"].coords.z)) < 20.0 then
+
+
+                    if #(targetPos - vector3(Depots["bltowingimpound"].takeVehicle.x,Depots["bltowingimpound"].takeVehicle.y,Depots["bltowingimpound"].takeVehicle.z)) < 20.0 then
+                        FreezeEntityPosition(CurrentCar, false)
+                        Wait(250)
+                        AttachEntityToEntity(CurrentCar, vehicle, 20, -0.0, -15.0, 1.0, 0.0, 0.0, 0.0, false, false, false, false, 20, true)
+                        DetachEntity(CurrentCar, true, true)
+                        SetVehicleOnGroundProperly(CurrentCar)
                         deliverVehicle(CurrentCar)
+                        Wait(100)
+                        if not DoesEntityExist(CurrentCar) then -- if the car doesnt exist, just then set it to nil
+                            CurrentDestination = {}
+                            CurrentCar = nil
+                        end
+                    else
+                        exports['okokNotify']:Alert(("This is not the place where you need to put the vehicle you are %s meter away"):format(math.floor(#(targetPos - vector3(Depots["bltowingimpound"].takeVehicle.x, Depots["bltowingimpound"].takeVehicle.y, Depots["bltowingimpound"].takeVehicle.z)))), "Failed", 5000, 'error')
                     end
                 end
-                CurrentCar = nil
+              
+            
                 exports['okokNotify']:Alert("Nice!", "Vehicle Taken Off", 5000, 'success')
             end, function() -- Cancel
                 StopAnimTask(PlayerPedId(), "mini@repair", "fixing_a_ped", 1.0)
@@ -438,18 +458,19 @@ end)
 -- Threads
 function RunWorkThread()
     CreateThread(function()
+      
         local shownHeader = false
         -- while true and PlayerJob.name == "qb-bluelinetowing" do
-        if LocalPlayer.state.isLoggedIn and PlayerJob.name == "bltowing" then
+        if PlayerJob.name == "bltowing" then
             local pos = GetEntityCoords(PlayerPedId())
 
-            if NpcOn and CurrentDestination ~= nil and next(CurrentDestination) ~= nil then
+            if NpcOn then
+                print("not reading")
                 VehicleSpawn = true
                 QBCore.Functions.SpawnVehicle(CurrentDestination.model, function(veh)
                     exports['LegacyFuel']:SetFuel(veh, 0.0)
                     doCarDamage(veh)
                     print("spawned")
-                    SetVehicleNumberPlateText(veh, "TOWME")
                 end, CurrentDestination, true)
 
             end
