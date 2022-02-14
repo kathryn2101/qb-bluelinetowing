@@ -3,7 +3,7 @@ This is a script i worked on for one of my companies in my city its based of the
 
 
 Blue Line Towing has hit QBCore.
-Was mostly frames for qb-policejob and qb-ambulancejob with snipets from qb-towjob.
+Was mostly frames from qb-towjob with snipets from qb-policejob and qb-ambulancejob.
 
 All I ask is if you use to provide credit where it is due.
 
